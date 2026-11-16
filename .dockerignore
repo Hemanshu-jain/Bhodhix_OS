@@ -3,9 +3,13 @@
 **/node_modules
 **/dist
 release
+release-field-work
 data
 vault
 _demo-vault-backup
+_backups
+tmp
 server/.pin
 server/.team.json
 server/.mcp-oauth.json
+server/.field-work.key

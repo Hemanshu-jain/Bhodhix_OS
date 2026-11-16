@@ -19,6 +19,8 @@ WORKDIR /app
 COPY server/package*.json ./server/
 RUN npm ci --omit=dev --prefix server
 COPY server/src ./server/src
+COPY server/migrations ./server/migrations
+COPY server/scripts ./server/scripts
 COPY --from=client-build /build/client/dist ./client/dist
 RUN mkdir -p /data/auth /data/tenants /data/vault && chown -R node:node /app /data
 
