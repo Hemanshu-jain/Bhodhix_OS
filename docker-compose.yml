@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:${HOST_PORT:-4000}:4000"
+    volumes:
+      - bhodhix-data:/data
+    init: true
+
+volumes:
+  bhodhix-data:

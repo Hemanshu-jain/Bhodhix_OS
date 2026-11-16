@@ -1,0 +1,11 @@
+.git
+.env
+**/node_modules
+**/dist
+release
+data
+vault
+_demo-vault-backup
+server/.pin
+server/.team.json
+server/.mcp-oauth.json

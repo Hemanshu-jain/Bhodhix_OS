@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bhodhix notification</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; color: #f7f8fc; font: 13px/1.4 "Segoe UI", system-ui, sans-serif; }
+    body { padding: 10px 12px 12px 10px; }
+    .card { --accent:#818cf8; --wash:rgba(99,102,241,.15); position:relative; height:100%; overflow:hidden; border:1px solid rgba(255,255,255,.12); border-radius:19px; background:linear-gradient(135deg,#171a28 0%,#0d101a 100%); box-shadow:0 20px 65px rgba(0,0,0,.46),0 0 0 1px rgba(0,0,0,.2); padding:15px 15px 12px; animation:arrive .38s cubic-bezier(.2,.8,.2,1) both; }
+    .card::before { content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--accent); box-shadow:0 0 18px var(--accent); }
+    .card.mail { --accent:#38bdf8; --wash:rgba(14,165,233,.16); }
+    .card.meeting { --accent:#a78bfa; --wash:rgba(139,92,246,.18); }
+    .card.task { --accent:#fbbf24; --wash:rgba(245,158,11,.15); }
+    .card.system { --accent:#818cf8; --wash:rgba(99,102,241,.15); }
+    .top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .brand { display:flex; align-items:center; gap:8px; color:#aab0c1; font-size:9px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; }
+    .mark { width:23px; height:23px; display:grid; place-items:center; border-radius:8px; color:var(--accent); background:var(--wash); font-size:13px; }
+    .kind { color:var(--accent); font-size:9px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+    .close { width:23px; height:23px; border:0; border-radius:7px; background:transparent; color:#798197; cursor:pointer; font-size:17px; }
+    .close:hover { color:white; background:rgba(255,255,255,.08); }
+    .content { display:flex; align-items:flex-start; gap:10px; margin-top:10px; }
+    .glyph { flex:0 0 35px; width:35px; height:35px; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--accent) 40%,transparent); border-radius:12px; color:var(--accent); background:var(--wash); font-size:16px; }
+    .copy { min-width:0; }
+    h1 { margin:0; overflow:hidden; color:#f5f6fb; font-size:13px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+    p { margin:3px 0 0; overflow:hidden; color:#a9afbf; font-size:11px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .bottom { position:absolute; right:13px; bottom:10px; left:15px; display:flex; align-items:center; justify-content:space-between; }
+    .time { color:#70798f; font-size:9px; }
+    .actions { display:flex; gap:6px; }
+    button.action { border:1px solid rgba(255,255,255,.11); border-radius:8px; padding:5px 9px; color:#c5cad6; background:rgba(255,255,255,.045); cursor:pointer; font:600 9px "Segoe UI",system-ui,sans-serif; }
+    button.action.primary { border-color:color-mix(in srgb,var(--accent) 40%,transparent); color:#f8fafc; background:var(--wash); }
+    button.action:hover { filter:brightness(1.2); }
+    @keyframes arrive { from { opacity:0; transform:translateX(30px) scale(.98); } to { opacity:1; transform:translateX(0) scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .card { animation:none; } }
+  </style>
+</head>
+<body>
+  <main id="card" class="card system" role="status" aria-live="polite">
+    <div class="top"><div class="brand"><span class="mark">B</span>Bhodhix OS <span class="kind" id="kind">SYSTEM</span></div><button class="close" id="close" aria-label="Dismiss notification">×</button></div>
+    <div class="content"><div class="glyph" id="glyph">✦</div><div class="copy"><h1 id="title">Bhodhix notification</h1><p id="body"></p></div></div>
+    <div class="bottom"><span class="time" id="time">JUST NOW</span><div class="actions" id="actions"></div></div>
+  </main>
+  <script>
+    const data = (() => { try { return JSON.parse(new URLSearchParams(location.search).get('payload') || '{}'); } catch { return {}; } })();
+    const kind = ['mail', 'meeting', 'task', 'system'].includes(data.kind) ? data.kind : 'system';
+    const styles = { mail: { label: 'MAIL', glyph: '✉', action: 'Open email' }, meeting: { label: 'MEETING', glyph: '◷', action: 'Open meeting' }, task: { label: 'TASK REMINDER', glyph: '✓', action: 'View task' }, system: { label: 'UPDATE', glyph: '✦', action: 'Open Bhodhix' } };
+    const meta = styles[kind];
+    document.getElementById('card').className = `card ${kind}`;
+    document.getElementById('kind').textContent = meta.label;
+    document.getElementById('glyph').textContent = meta.glyph;
+    document.getElementById('title').textContent = String(data.title || 'Bhodhix notification').slice(0, 120);
+    document.getElementById('body').textContent = String(data.body || '').slice(0, 500);
+    document.getElementById('time').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toUpperCase();
+    document.getElementById('close').addEventListener('click', () => window.bhodhixDesktop?.action({ id: data.id, kind, action: 'dismiss', data: data.data || {} }));
+    const actions = document.getElementById('actions');
+    const actionButton = (label, action, primary = false) => {
+      const button = document.createElement('button');
+      button.className = `action${primary ? ' primary' : ''}`;
+      button.textContent = label;
+      button.addEventListener('click', () => window.bhodhixDesktop?.action({ id: data.id, kind, action, data: data.data || {} }));
+      actions.append(button);
+    };
+    actionButton(meta.action, kind === 'task' ? 'open_task' : kind === 'mail' || kind === 'meeting' ? 'open_link' : 'open_app', true);
+    actionButton('Dismiss', 'dismiss');
+    document.querySelector('.content').addEventListener('click', () => window.bhodhixDesktop?.action({ id: data.id, kind, action: kind === 'task' ? 'open_task' : 'open_app', data: data.data || {} }));
+  </script>
+</body>
+</html>

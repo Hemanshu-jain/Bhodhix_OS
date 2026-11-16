@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "Bhodhix OS — Command Center",
+  "short_name": "Bhodhix",
+  "description": "A company workspace for projects, tasks, documents, and team coordination.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08090d",
+  "theme_color": "#08090d",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
