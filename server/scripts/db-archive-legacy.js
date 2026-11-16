@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { createPool } = require('../src/postgres');
+const { createPool, migrate } = require('../src/postgres');
 
 function collect(root, sourceKey, files = [], prefix = '') {
   if (!fs.existsSync(root)) return files;
@@ -41,20 +41,47 @@ async function archiveFiles(pool, files) {
   }
 }
 
-async function main() {
-  const authStore = path.resolve(process.env.AUTH_STORE_FILE || path.join(__dirname, '../.team.json'));
-  const mcpStore = path.resolve(process.env.MCP_OAUTH_STORE_FILE || path.join(__dirname, '../.mcp-oauth.json'));
-  const vaultRoot = path.resolve(process.env.LEGACY_VAULT_DIR || path.join(__dirname, '../../vault'));
-  const tenantRoot = path.resolve(process.env.TENANT_DATA_DIR || path.join(__dirname, '../../data/tenants'));
+function buildArchiveFiles() {
+  const appData = process.env.APPDATA ? path.join(process.env.APPDATA, 'bhodix-command-center') : '';
+  const useAppData = appData && fs.existsSync(appData);
+  const authRoot = useAppData ? path.join(appData, 'auth') : path.resolve(__dirname, '..');
+  const authStore = path.resolve(process.env.AUTH_STORE_FILE || path.join(authRoot, useAppData ? 'team.json' : '.team.json'));
+  const mcpStore = path.resolve(process.env.MCP_OAUTH_STORE_FILE || path.join(authRoot, useAppData ? 'mcp-oauth.json' : '.mcp-oauth.json'));
+  const vaultRoot = path.resolve(process.env.LEGACY_VAULT_DIR || (useAppData ? path.join(appData, 'vault') : path.join(__dirname, '../../vault')));
+  const tenantRoot = path.resolve(process.env.TENANT_DATA_DIR || (useAppData ? path.join(appData, 'tenants') : path.join(__dirname, '../../data/tenants')));
   const files = [
     ...collectFile(authStore, 'auth'),
     ...collectFile(mcpStore, 'auth'),
     ...collect(vaultRoot, 'vault'),
     ...collect(tenantRoot, 'tenants')
   ];
+  if (useAppData) {
+    for (const name of fs.readdirSync(authRoot)) {
+      if (/^team\.json\.backup-before-/i.test(name)) files.push(...collectFile(path.join(authRoot, name), 'auth-recovery'));
+    }
+    for (const name of fs.readdirSync(path.dirname(vaultRoot))) {
+      if (/^vault\.backup-before-/i.test(name)) files.push(...collect(path.join(path.dirname(vaultRoot), name), 'vault-recovery'));
+    }
+  }
+  return files;
+}
+
+async function main() {
+  const files = buildArchiveFiles();
   if (!files.length) throw new Error('No legacy files found. Set AUTH_STORE_FILE, LEGACY_VAULT_DIR, and TENANT_DATA_DIR to the app data locations first.');
+  const sources = Object.groupBy(files, (file) => file.sourceKey);
+  const summary = Object.fromEntries(Object.entries(sources).map(([key, items]) => [key, {
+    files: items.length,
+    bytes: items.reduce((total, item) => total + item.content.length, 0),
+    sha256: crypto.createHash('sha256').update(items.map((item) => `${item.relativePath}:${crypto.createHash('sha256').update(item.content).digest('hex')}`).sort().join('\n')).digest('hex')
+  }]));
+  if (process.argv.includes('--dry-run')) {
+    console.log(JSON.stringify({ dryRun: true, sources: summary, totalFiles: files.length, totalBytes: files.reduce((total, file) => total + file.content.length, 0) }, null, 2));
+    return;
+  }
   const pool = createPool();
   try {
+    await migrate(pool);
     await archiveFiles(pool, files);
     console.log(`Archived ${files.length} legacy files to PostgreSQL with SHA-256 checksums; source files were left untouched.`);
   } finally {
@@ -62,7 +89,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+if (require.main === module) main().catch((error) => {
   console.error(`Legacy archive failed: ${error.message}`);
   process.exitCode = 1;
 });
+
+module.exports = { buildArchiveFiles, archiveFiles };

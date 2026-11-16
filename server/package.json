@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "db:migrate": "node scripts/db-migrate.js",
-    "db:archive-legacy": "node scripts/db-archive-legacy.js"
+    "db:archive-legacy": "node scripts/db-archive-legacy.js",
+    "db:prepare-legacy": "node scripts/db-prepare-legacy.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
