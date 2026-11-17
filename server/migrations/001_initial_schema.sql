@@ -28,7 +28,7 @@ CREATE TABLE memberships (
   active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   work_mode text NOT NULL DEFAULT 'office',
-  project_ids jsonb NOT NULL DEFAULT 'null'::jsonb,
+  project_ids jsonb NOT NULL DEFAULT 'null'::jsonb
 );
 CREATE INDEX memberships_user_idx ON memberships (user_id, active);
 CREATE UNIQUE INDEX memberships_active_unique ON memberships (organization_id, user_id) WHERE active;

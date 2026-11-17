@@ -24,15 +24,23 @@ async function archiveFiles(pool, files) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const expected = new Map();
     for (const file of files) {
       const sha256 = crypto.createHash('sha256').update(file.content).digest('hex');
+      expected.set(`${file.sourceKey}\0${file.relativePath}`, sha256);
       await client.query(`INSERT INTO legacy_files (id, source_key, relative_path, content, sha256)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (source_key, relative_path) DO UPDATE
         SET content = EXCLUDED.content, sha256 = EXCLUDED.sha256, imported_at = now()
         WHERE legacy_files.sha256 <> EXCLUDED.sha256`, [crypto.randomUUID(), file.sourceKey, file.relativePath, file.content, sha256]);
     }
+    for (const sourceKey of new Set(files.map((file) => file.sourceKey))) {
+      const paths = files.filter((file) => file.sourceKey === sourceKey).map((file) => file.relativePath);
+      const result = await client.query('SELECT relative_path, sha256 FROM legacy_files WHERE source_key = $1 AND relative_path = ANY($2::text[])', [sourceKey, paths]);
+      if (result.rowCount !== paths.length || result.rows.some((row) => expected.get(`${sourceKey}\0${row.relative_path}`) !== row.sha256.trim())) throw new Error(`Legacy archive verification failed for source ${sourceKey}`);
+    }
     await client.query('COMMIT');
+    return { fileCount: files.length, bytes: files.reduce((sum, file) => sum + file.content.length, 0) };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
