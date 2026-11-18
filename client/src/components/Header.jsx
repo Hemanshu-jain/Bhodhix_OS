@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import {
-  RefreshCw,
-  Bell,
-  Plus
-} from 'lucide-react';
+import { Activity, Bell, ChevronDown, Layers, Plus, RefreshCw } from 'lucide-react';
 import { useVault } from '../context/VaultContext';
 import { useToast } from './ToastProvider';
 
@@ -16,114 +12,90 @@ export default function Header({ currentView }) {
     companyName,
     setIsCreateProjectOpen,
     getAllTasks,
-    health
+    health,
+    connected
   } = useVault();
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    const ok = await refreshAll();
-    setRefreshing(false);
-    showToast(ok ? 'Refreshed from disk' : 'Refresh failed', ok ? 'success' : 'error');
+    try {
+      const ok = await refreshAll();
+      showToast(ok ? 'Workspace refreshed' : 'Refresh failed', ok ? 'success' : 'error');
+    } catch {
+      showToast('Refresh failed', 'error');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  // Context-aware view meta
   const viewMeta = {
-    executive: { title: 'Executive Cockpit', subtitle: 'Real-time workspace overview & key metrics' },
+    executive: { title: 'Executive Cockpit', subtitle: 'Workspace overview and key metrics' },
     projects: { title: 'Projects & Features', subtitle: `${projectList.length} registered ${projectList.length === 1 ? 'project' : 'projects'}` },
-    planner: { title: 'Planner & Sprints', subtitle: (() => { try { const t = getAllTasks(); return `${t.length} task${t.length === 1 ? '' : 's'} · synced with vault`; } catch { return 'Task management'; } })() },
-    monitor: { title: 'Server & Health', subtitle: (() => { try { return `${health?.endpoints?.length || 0} endpoint${(health?.endpoints?.length || 0) === 1 ? '' : 's'} monitored`; } catch { return 'Live uptime monitor'; } })() },
-    finance: { title: 'Finance & Economics', subtitle: 'Revenue, burn rate & unit economics' },
-    billing: { title: 'Quotations & Invoices', subtitle: 'Client billing & document management' },
-    vault: { title: 'Documents & Vault', subtitle: 'Markdown workspace files' },
+    planner: { title: 'Planner & Sprints', subtitle: (() => { try { const tasks = getAllTasks(); return `${tasks.length} task${tasks.length === 1 ? '' : 's'} · synced with workspace`; } catch { return 'Task management'; } })() },
+    monitor: { title: 'Server & Health', subtitle: `${health?.endpoints?.length || 0} endpoint${(health?.endpoints?.length || 0) === 1 ? '' : 's'} monitored` },
+    finance: { title: 'Finance & Economics', subtitle: 'Revenue, burn rate, and unit economics' },
+    billing: { title: 'Quotations & Invoices', subtitle: 'Client billing and documents' },
+    vault: { title: 'Documents & Vault', subtitle: 'Workspace files and documentation' },
     secrets: { title: 'Secrets Vault', subtitle: 'Encrypted credential storage' },
-    team: { title: 'Team & Access', subtitle: 'Members, roles & workspace permissions' },
-    ai: { title: 'Integrations', subtitle: 'AI assistants, Slack & external connectors' }
+    team: { title: 'Team & Access', subtitle: 'Members, roles, and permissions' },
+    ai: { title: 'Integrations', subtitle: 'AI assistants and connected services' }
   };
-
   const current = viewMeta[currentView] || { title: 'Overview', subtitle: '' };
-
-  // Views where project selector is relevant
   const showProjectSelector = !['ai', 'secrets', 'billing', 'team'].includes(currentView);
 
-  return (
-    <header className="z-10 flex h-[52px] shrink-0 select-none items-center justify-between border-b border-bhodix-border bg-bhodix-bg px-4 md:px-6">
+  const actionButton = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-bhodix-border bg-bhodix-surface text-bhodix-textMuted transition-colors hover:border-bhodix-borderHover hover:bg-bhodix-hover hover:text-bhodix-text disabled:cursor-wait disabled:opacity-60';
 
-      {/* Left: Title & Context */}
+  return (
+    <header className="z-20 flex min-h-[72px] shrink-0 items-center justify-between gap-3 border-b border-bhodix-border bg-bhodix-surface/95 px-3 backdrop-blur sm:px-5 lg:px-7">
       <div className="flex min-w-0 items-center gap-3">
+        <div className="hidden h-9 w-1 shrink-0 rounded-full bg-indigo-500 sm:block" aria-hidden="true" />
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-bold tracking-tight text-bhodix-text leading-tight">
-            {current.title}
-          </h1>
-          {current.subtitle && (
-            <p className="truncate text-[10px] text-bhodix-textSubtle font-mono leading-tight mt-px">
-              {current.subtitle}
-            </p>
-          )}
+          <div className="mb-1 hidden min-w-0 items-center gap-2 text-[10px] font-medium uppercase tracking-[0.12em] text-bhodix-textSubtle sm:flex">
+            <span className="max-w-[180px] truncate">{companyName || 'Workspace'}</span>
+            <span className="text-bhodix-borderHover">/</span>
+            <span>Command Center</span>
+          </div>
+          <h1 className="truncate text-[14px] font-semibold leading-tight tracking-tight text-bhodix-text sm:text-[15px]">{current.title}</h1>
+          {current.subtitle && <p className="mt-1 hidden truncate text-[11px] leading-tight text-bhodix-textSubtle md:block">{current.subtitle}</p>}
         </div>
       </div>
 
-      {/* Right: Controls */}
-      <div className="flex min-w-0 items-center gap-2 md:gap-2.5">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className={`hidden items-center gap-2 rounded-xl border px-3 py-2 text-[11px] font-medium xl:flex ${connected ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-300' : 'border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-300'}`} title={connected ? 'Workspace connection is active' : 'Workspace is offline'}>
+          <Activity className="h-3.5 w-3.5" />
+          {connected ? 'Connected' : 'Offline'}
+        </div>
 
-        {/* Project Selector — pill-style */}
         {showProjectSelector && (
-          <>
-            <div className="hidden items-center rounded-xl border border-bhodix-border bg-bhodix-card/60 p-0.5 text-[11px] font-medium lg:flex">
-              {[{ id: 'all', name: 'All Apps' }, ...projectList].map((proj) => (
-                <button
-                  key={proj.id}
-                  onClick={() => setSelectedProject(proj.id)}
-                  className={`px-3 py-1.5 rounded-[10px] transition-all duration-150 ${
-                    selectedProject === proj.id
-                      ? 'bg-indigo-600 text-white font-semibold shadow-sm shadow-indigo-600/20'
-                      : 'text-bhodix-textMuted hover:text-bhodix-text hover:bg-bhodix-hover/50'
-                  }`}
-                >
-                  {proj.name}
-                </button>
-              ))}
-              <button
-                onClick={() => setIsCreateProjectOpen(true)}
-                className="px-1.5 py-1.5 rounded-lg text-bhodix-textSubtle hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors"
-                title="New project"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Mobile project selector */}
+          <label className="relative flex h-10 min-w-0 items-center rounded-xl border border-bhodix-border bg-bhodix-surface transition-colors hover:border-bhodix-borderHover focus-within:border-indigo-500/60">
+            <Layers className="pointer-events-none absolute left-2.5 h-4 w-4 text-bhodix-textSubtle" />
+            <span className="sr-only">Choose project</span>
             <select
               aria-label="Choose project"
               value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="max-w-28 rounded-xl border border-bhodix-border bg-bhodix-card px-2 py-1.5 text-[10px] text-bhodix-text lg:hidden"
+              onChange={(event) => setSelectedProject(event.target.value)}
+              className="h-full w-[122px] appearance-none truncate bg-transparent py-0 pl-8 pr-7 text-[11px] font-medium text-bhodix-text outline-none sm:w-[150px] lg:w-[190px]"
             >
-              {[{ id: 'all', name: 'All Apps' }, ...projectList].map((project) => (
-                <option key={project.id} value={project.id}>{project.name}</option>
-              ))}
+              {[{ id: 'all', name: 'All Apps' }, ...projectList].map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
-          </>
+            <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-bhodix-textSubtle" />
+          </label>
         )}
 
-        {/* Refresh */}
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="rounded-xl p-2 text-bhodix-textMuted transition-colors hover:bg-bhodix-hover hover:text-bhodix-text disabled:opacity-40"
-          title="Reload from disk"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+        {showProjectSelector && (
+          <button type="button" onClick={() => setIsCreateProjectOpen(true)} aria-label="Create project" title="Create project" className={`${actionButton} hidden sm:inline-flex`}>
+            <Plus className="h-4 w-4" />
+          </button>
+        )}
+
+        <button type="button" onClick={handleRefresh} disabled={refreshing} aria-label="Refresh workspace" title="Refresh workspace" className={actionButton}>
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
 
-        {/* Notification Bell */}
-        <button
-          className="relative rounded-xl p-2 text-bhodix-textMuted transition-colors hover:bg-bhodix-hover hover:text-bhodix-text"
-          title="Notifications"
-          onClick={() => showToast('No new notifications', 'info')}
-        >
-          <Bell className="w-4 h-4" />
+        <button type="button" aria-label="Notifications" title="Notifications" onClick={() => showToast('No new notifications', 'info')} className={`${actionButton} relative`}>
+          <Bell className="h-4 w-4" />
         </button>
       </div>
     </header>
